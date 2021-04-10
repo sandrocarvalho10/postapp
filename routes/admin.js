@@ -4,7 +4,7 @@ const mongoose = require('mongoose')
 require('../models/Category')
 const Category = mongoose.model('categories')
 
-router.get('/', (req,res) => {
+router.get('/', (req, res) => {
   res.render('admin/index')
 })
 
@@ -12,7 +12,15 @@ router.get('/posts', () => {
   res.send('Pagina de Posts')
 })
 router.get('/categorias', (req, res) => {
-  res.render('admin/category')
+  Category.find().lean().sort({ date: 'desc' })
+    .then((category) => {
+      res.render('admin/category', { category: category })
+    })
+    .catch((err) => {
+      req.flash('error_msg', 'Houve um erro ao listar as categorias')
+      res.redirect('/admin')
+    })
+
 })
 
 router.get('/categorias/add', (req, res) => {
@@ -20,18 +28,86 @@ router.get('/categorias/add', (req, res) => {
 })
 
 router.post('/categorias/nova', (req, res) => {
-  const newCategory = {
-    name: req.body.name,
-    slug: req.body.slug
+
+  var errors = []
+
+  if (!req.body.name || typeof req.body.name == undefined || req.body.name == null) {
+    errors.push({ text: 'Nome Inválido' })
   }
 
-  new Category(newCategory).save()
-  .then(() => {
-    console.log('Categoria salva com sucesso!!')
-  })
-  .catch((err) => {
-    console.log('Erro ao salvar categoria!!' + err)
-  })
+  if (!req.body.slug || typeof req.body.slug == undefined || req.body.slug == null) {
+    errors.push({ text: 'Slug inválido' })
+  }
+
+  if (req.body.name.length < 2) {
+    errors.push({ text: 'Nome da categoria muito pequeno.' })
+  }
+
+  if (errors.length > 0) {
+    res.render('admin/addcategory', { errors: errors })
+  } else {
+    const newCategory = {
+      name: req.body.name,
+      slug: req.body.slug
+    }
+
+    new Category(newCategory).save()
+      .then(() => {
+        req.flash('success_msg', 'Categoria criada com sucesso')
+        res.redirect('/admin/categorias')
+      })
+      .catch((err) => {
+        req.flash('error_msg', 'Houve um erro ao salvar a categoria, tente novamente!')
+        res.redirect('/admin')
+      })
+  }
+})
+
+
+router.get('/categorias/edit/:id', (req, res) => {
+  Category.findOne({ _id: req.params.id }).lean()
+    .then((category) => {
+      res.render('admin/editcategory', { category: category })
+    }).catch((err) => {
+      req.flash('error_msg', 'Esta categoria não existe!')
+      res.redirect('/admin/categorias')
+    })
+})
+
+router.post('/categorias/edit', (req, res) => {
+  Category.findOne({ _id: req.body.id })
+    .then((category) => {
+      category.name = req.body.name
+      category.slug = req.body.slug
+
+      category.save()
+        .then(() => {
+          req.flash('success_msg', 'Categoria editada com sucesso!')
+          res.redirect('/admin/categorias')
+        })
+        .catch((err) => {
+          req.flash('error_msg', 'Houve um erro ao salvar a categoria!')
+          res.redirect('/admin/categorias')
+        })
+
+    })
+    .catch((err) => {
+      req.flash('error_msg', 'Houve um erro ao editar a categoria!')
+      res.redirect('/admin/categorias')
+    })
+})
+
+
+router.post('/categorias/deletar', (req, res) => {
+  Category.remove({ _id: req.body.id })
+    .then(() => {
+      req.flash('success_msg', 'Categoria deletada com sucesso!')
+      res.redirect('/admin/categorias')
+    })
+    .catch((err) => {
+      req.flash('error_msg', 'Houve um erro ao deletar a categoria!')
+      res.redirect('/admin/categorias')
+    })
 })
 
 
