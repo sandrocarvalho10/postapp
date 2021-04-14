@@ -2,15 +2,14 @@ const express = require('express')
 const router = express.Router()
 const mongoose = require('mongoose')
 require('../models/Category')
+require('../models/Posts')
 const Category = mongoose.model('categories')
+const Posts = mongoose.model('posts')
 
 router.get('/', (req, res) => {
   res.render('admin/index')
 })
 
-router.get('/posts', () => {
-  res.send('Pagina de Posts')
-})
 router.get('/categorias', (req, res) => {
   Category.find().lean().sort({ date: 'desc' })
     .then((category) => {
@@ -108,6 +107,22 @@ router.post('/categorias/deletar', (req, res) => {
       req.flash('error_msg', 'Houve um erro ao deletar a categoria!')
       res.redirect('/admin/categorias')
     })
+})
+
+
+router.get('/postagens', (req, res) => {
+  res.render('admin/post')
+})
+
+router.get('/postagens/add', (req, res) => {
+  Category.find().lean()
+  .then((category) => {
+    res.render('admin/addpost', { category: category})
+  })
+  .catch(() => {
+    req.flash('error_msg', 'Houve um erro ao carregar o formulário.')
+    res.redirect('/admin')
+  })
 })
 
 
